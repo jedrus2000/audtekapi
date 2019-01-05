@@ -16,12 +16,12 @@ Main reason for creating it, is my upcoming plugin for `Mopidy
 <http://apt.mopidy.com/>`_.
 
 Currently following functions are implemented:
-    - get_categories - getting Categories (logging not needed)
-    - login - logging into service
-    - get_shelf - getting shelf content (logging required)
-    - get_shelf_item - getting single book detail (logging required)
-    - get_chapters - getting book's chapters list (logging required)
-    - get_chapter_file - getting one chapter file data (logging required)
+    - get_categories - getting Categories (sign in not needed)
+    - login - login into service
+    - get_shelf - getting shelf content (sign in required)
+    - get_shelf_item - getting single book detail (sign in required)
+    - get_chapters - getting book's chapters list (sign in required)
+    - get_chapter_file - getting one chapter file data (sign in required)
     - epoch_to_datetime - converts date time string seen in Audioteka's responses into Python's DateTime
 
 
@@ -39,7 +39,7 @@ Usage
 =============
 Examples.
 
-Logging in::
+sign in::
 
     bash> python
     Python 2.7.15
