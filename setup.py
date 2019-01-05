@@ -26,7 +26,6 @@ setup(
     include_package_data=True,
     install_requires=[
         'setuptools',
-        'pathlib2 >= 2.3.3',
         'requests >= 2.21.0',
     ],
     classifiers=[
@@ -35,6 +34,6 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2',
-        'Topic :: Multimedia :: Sound/Audio :: API',
+        'Topic :: Multimedia :: Sound/Audio',
     ],
 )

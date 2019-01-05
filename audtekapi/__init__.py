@@ -13,19 +13,20 @@ from datetime import datetime
 __version__ = '0.1.0'
 
 
-AUDIOTEKA_API_URL = 'https://proxy3.audioteka.com/pl/MobileService.svc/'
-AUDIOTEKA_API_VERSION = '2.3.15'
+AUDIOTEKA_API_URL = "https://proxy3.audioteka.com/pl/MobileService.svc/"
+AUDIOTEKA_API_VERSION = "2.3.15"
 
-DEFAULT_HEADERS = {
-    'User-agent': 'Android/'+AUDIOTEKA_API_VERSION
-}
+DEFAULT_HEADERS = {"User-agent": "Android/" + AUDIOTEKA_API_VERSION}
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
-def get_categories(category_name, page=1, per_page_count=100, samples=False, session=None, headers=None):
+def get_categories(
+    category_name, page=1, per_page_count=100, samples=False, session=None, headers=None
+):
     """
-    Gets Categories
+    gets Categories
 
     :param category_name:
     :param page:
@@ -35,14 +36,18 @@ def get_categories(category_name, page=1, per_page_count=100, samples=False, ses
     :param headers:
     :return:
     """
-    return _post('categories', {}, session,
-                 {
-                     'categoryName': category_name,
-                     'page': page,
-                     'samples': samples,
-                     'count': per_page_count,
-                 },
-                 headers).json()
+    return _post(
+        "categories",
+        {},
+        session,
+        {
+            "categoryName": category_name,
+            "page": page,
+            "samples": samples,
+            "count": per_page_count,
+        },
+        headers,
+    ).json()
 
 
 def login(user_login, user_password, session=None, headers=None):
@@ -59,7 +64,7 @@ def login(user_login, user_password, session=None, headers=None):
     :param user_password:
     :param session:
     :param headers:
-    :return: credentials with login data and hashed password
+    :return: credentials Dict with login data,token and hashed password
 
     {
         "userLogin": "yyyyyyyyyyyyyyyyy",
@@ -71,14 +76,17 @@ def login(user_login, user_password, session=None, headers=None):
     }
     """
     headers = headers if headers else DEFAULT_HEADERS
-    headers['XMobileAudiotekaVersion'] = AUDIOTEKA_API_VERSION
+    headers["XMobileAudiotekaVersion"] = AUDIOTEKA_API_VERSION
 
-    credentials = {'userLogin': user_login, 'userPassword': user_password}
+    credentials = {"userLogin": user_login, "userPassword": user_password}
 
-    login_data = _post('login', credentials, session, {}, headers).json()
-    login_data["HashedPassword"] = get_hashed_password(credentials["userPassword"], credentials["Salt"])
+    logged_in_data = _post("login", credentials, session, {}, headers).json()
+    logged_in_data["HashedPassword"] = _get_hashed_password(
+        credentials["userPassword"], logged_in_data["Salt"]
+    )
+    logged_in_data["userLogin"] = credentials["userLogin"]
 
-    return _merge_dicts(credentials, login_data)
+    return logged_in_data
 
 
 def get_shelf(credentials, session=None, headers=None):
@@ -90,7 +98,9 @@ def get_shelf(credentials, session=None, headers=None):
     :param headers:
     :return:
     """
-    return _post('get_shelf', credentials, session, {'onlyPaid': 'false'}, headers).json()
+    return _post(
+        "get_shelf", credentials, session, {"onlyPaid": "false"}, headers
+    ).json()
 
 
 def get_shelf_item(product_id, credentials, session=None, headers=None):
@@ -103,10 +113,14 @@ def get_shelf_item(product_id, credentials, session=None, headers=None):
     :param headers:
     :return:
     """
-    return _post('shelf_item', credentials, session, {'productId': product_id}, headers).json()
+    return _post(
+        "shelf_item", credentials, session, {"productId": product_id}, headers
+    ).json()
 
 
-def get_chapters(tracking_number, line_item_id, credentials, session=None, headers=None):
+def get_chapters(
+    tracking_number, line_item_id, credentials, session=None, headers=None
+):
     """
     get list of chapters from book
 
@@ -117,62 +131,63 @@ def get_chapters(tracking_number, line_item_id, credentials, session=None, heade
     :param headers:
     :return:
     """
-    return _post('get_chapters',
-                 credentials,
-                 session,
-                 {'lineItemId': line_item_id, 'trackingNumber': tracking_number},
-                 headers).json()
+    return _post(
+        "get_chapters",
+        credentials,
+        session,
+        {"lineItemId": line_item_id, "trackingNumber": tracking_number},
+        headers,
+    ).json()
 
 
-def get_chapter_file(tracking_number, line_item_id, file_name, credentials,
-                     download_server_url, download_server_footer, session=None, headers=None):
+def get_chapter_file(
+    tracking_number,
+    line_item_id,
+    download_server_url,
+    download_server_footer,
+    file_name,
+    credentials,
+    session=None,
+    headers=None,
+):
     """
     gets chapter file.
 
     :param tracking_number:
     :param line_item_id:
-    :param file_name:
-    :param credentials:
     :param download_server_url:
     :param download_server_footer:
+    :param file_name:
+    :param credentials:
     :param session:
     :param headers:
-    :return:
+
+    :return: Requests response
     """
     s = session if session else requests.session()
 
     if not headers:
         headers = DEFAULT_HEADERS
 
-    headers['XMobileAudiotekaVersion'] = AUDIOTEKA_API_VERSION
-    headers['XMobileAppVersion'] = DEFAULT_HEADERS['User-agent']
-    headers['Range'] = 'bytes=0-'
+    headers["XMobileAudiotekaVersion"] = AUDIOTEKA_API_VERSION
+    headers["XMobileAppVersion"] = DEFAULT_HEADERS["User-agent"]
+    headers["Range"] = "bytes=0-"
 
-    url = download_server_url + \
-          '?TrackingNumber={0}&LineItemId={1}&FileName={2}&'.format(tracking_number, line_item_id, file_name) + \
-          download_server_footer
+    url = (
+        download_server_url
+        + "?TrackingNumber={0}&LineItemId={1}&FileName={2}&".format(
+            tracking_number, line_item_id, file_name
+        )
+        + download_server_footer
+    )
 
-    r = s.get(url, auth=HTTPDigestAuth(credentials["userLogin"], credentials["HashedPassword"]), headers=headers)
+    r = s.get(
+        url,
+        auth=HTTPDigestAuth(credentials["userLogin"], credentials["HashedPassword"]),
+        headers=headers,
+    )
 
     return r
-
-
-def get_hashed_password(user_password, salt):
-    """
-    calculates hashed password
-    Salt can be get calling `login`
-
-    :param user_password:
-    :param salt:
-    :return:
-    """
-    salt_bytes = struct.pack('>I', int(salt))
-    password_encoded = user_password.encode('utf-16le')
-
-    hash_bytes = hashlib.sha256(salt_bytes + password_encoded).digest()
-    hashed_password = binascii.hexlify(salt_bytes + hash_bytes).upper()
-
-    return hashed_password
 
 
 def epoch_to_datetime(aud_dt):
@@ -182,26 +197,49 @@ def epoch_to_datetime(aud_dt):
     :param aud_dt:
     :return:
     """
-    result = re.search(r'Date\((.*)\+(.*)\)', aud_dt)
+    result = re.search(r"Date\((.*)\+(.*)\)", aud_dt)
     epoch_utc = result.group(1)
     local_tz_offset = result.group(2)
     try:
-        return datetime.utcfromtimestamp(float(epoch_utc) if len(epoch_utc) < 11 else float(epoch_utc)/1000)
+        return datetime.utcfromtimestamp(
+            float(epoch_utc) if len(epoch_utc) < 11 else float(epoch_utc) / 1000
+        )
     except (TypeError, ValueError) as e:
-        logger.error(str(e)+' Input epoch_utc: '+str(epoch_utc))
+        logger.error(str(e) + " Input epoch_utc: " + str(epoch_utc))
+
+
+def _get_hashed_password(user_password, salt):
+    """
+    calculates hashed password
+    Salt can be get calling `login`
+
+    :param user_password:
+    :param salt:
+    :return:
+    """
+    salt_bytes = struct.pack(">I", int(salt))
+    password_encoded = user_password.encode("utf-16le")
+
+    hash_bytes = hashlib.sha256(salt_bytes + password_encoded).digest()
+    hashed_password = binascii.hexlify(salt_bytes + hash_bytes).upper()
+
+    return hashed_password
 
 
 def _post(endpoint, credentials, session=None, data=None, headers=None):
-    d, h = _merge_into_data_and_headers(credentials, data, headers if headers else DEFAULT_HEADERS)
+    d, h = _merge_into_data_and_headers(
+        credentials, data, headers if headers else DEFAULT_HEADERS
+    )
     s = session if session else requests.session()
-    r = s.post(AUDIOTEKA_API_URL+endpoint, data=d, headers=h)
+    #
+    r = s.post(AUDIOTEKA_API_URL + endpoint, data=d, headers=h)
     j = r.json()
-    if j == u'login_failed':
+    if j == "login_failed":
         r.status_code = 401
-        r.reason = 'Login failed'
-    elif j == u'item_not_found':
+        r.reason = "Login failed"
+    elif j == "item_not_found":
         r.status_code = 404
-        r.reason = 'Item not found'
+        r.reason = "Item not found"
     r.raise_for_status()
     return r
 
@@ -212,13 +250,13 @@ def _merge_into_data_and_headers(credentials, data, headers):
 
     ret_data = dict()
     ret_headers = dict()
-    ret_data['userLogin'] = credentials['userLogin']
-    if 'userPassword' in credentials:
-        ret_data['userPassword'] = credentials['userPassword']
+    ret_data["userLogin"] = credentials["userLogin"]
+    if "userPassword" in credentials:
+        ret_data["userPassword"] = credentials["userPassword"]
     else:
-        ret_headers['XMobileAudiotekaVersion'] = AUDIOTEKA_API_VERSION
-        ret_headers['XMobileTokenAuthentication'] = credentials['AuthenticationToken']
-        ret_headers['XMobileUserLogin'] = credentials['userLogin']
+        ret_headers["XMobileAudiotekaVersion"] = AUDIOTEKA_API_VERSION
+        ret_headers["XMobileTokenAuthentication"] = credentials["AuthenticationToken"]
+        ret_headers["XMobileUserLogin"] = credentials["userLogin"]
 
     return _merge_dicts(data, ret_data), _merge_dicts(ret_headers, headers)
 
