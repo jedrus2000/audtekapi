@@ -52,13 +52,7 @@ def get_categories(
 
 def login(user_login, user_password, session=None, headers=None):
     """
-    logins into Audioteka.
-
-    if login is successful returns i.e. : {
-        "AuthenticationToken": "11aaa11a-22bb-33dd-44dd-33aa11cc33cc",
-        "Salt": "3666666666",
-        "Status": "LoginStatusOk"
-    }
+    signing in into Audioteka.
 
     :param user_login:
     :param user_password:
