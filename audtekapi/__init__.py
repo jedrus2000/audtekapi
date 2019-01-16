@@ -10,7 +10,7 @@ from requests.auth import HTTPDigestAuth
 import logging
 from datetime import datetime
 
-__version__ = '0.1.1'
+__version__ = '0.2.0'
 
 
 AUDIOTEKA_API_URL = "https://proxy3.audioteka.com/pl/MobileService.svc/"
@@ -74,7 +74,12 @@ def login(user_login, user_password, session=None, headers=None):
 
     credentials = {"userLogin": user_login, "userPassword": user_password}
 
-    logged_in_data = _post("login", credentials, session, {}, headers).json()
+    r = _post("login", credentials, session, {}, headers)
+    logged_in_data = r.json()
+    if logged_in_data["Status"] == "LoginStatusErr":
+        _set_response_login_failed(r)
+        r.raise_for_status()
+
     logged_in_data["HashedPassword"] = _get_hashed_password(
         credentials["userPassword"], logged_in_data["Salt"]
     )
@@ -141,6 +146,7 @@ def get_chapter_file(
     download_server_footer,
     file_name,
     credentials,
+    stream=False,
     session=None,
     headers=None,
 ):
@@ -153,6 +159,7 @@ def get_chapter_file(
     :param download_server_footer:
     :param file_name:
     :param credentials:
+    :param stream: Default: False. If True, returns stream (chunks)
     :param session:
     :param headers:
 
@@ -179,6 +186,7 @@ def get_chapter_file(
         url,
         auth=HTTPDigestAuth(credentials["userLogin"], credentials["HashedPassword"]),
         headers=headers,
+        stream=stream
     )
 
     return r
@@ -229,11 +237,10 @@ def _post(endpoint, credentials, session=None, data=None, headers=None):
     r = s.post(AUDIOTEKA_API_URL + endpoint, data=d, headers=h)
     j = r.json()
     if j == "login_failed":
-        r.status_code = 401
-        r.reason = "Login failed"
+        _set_response_login_failed(r)
     elif j == "item_not_found":
-        r.status_code = 404
-        r.reason = "Item not found"
+        _set_response_item_not_found(r)
+
     r.raise_for_status()
     return r
 
@@ -260,3 +267,13 @@ def _merge_dicts(*dict_args):
     for dictionary in dict_args:
         result.update(dictionary)
     return result
+
+
+def _set_response_login_failed(r):
+    r.status_code = 401
+    r.reason = "Login failed"
+
+
+def _set_response_item_not_found(r):
+    r.status_code = 404
+    r.reason = "Item not found"
