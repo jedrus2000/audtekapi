@@ -225,7 +225,7 @@ def _get_hashed_password(user_password, salt):
     hash_bytes = hashlib.sha256(salt_bytes + password_encoded).digest()
     hashed_password = binascii.hexlify(salt_bytes + hash_bytes).upper()
 
-    return hashed_password
+    return bytes(hashed_password).decode()
 
 
 def _post(endpoint, credentials, session=None, data=None, headers=None):
