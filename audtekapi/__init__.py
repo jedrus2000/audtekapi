@@ -10,7 +10,7 @@ from requests.auth import HTTPDigestAuth
 import logging
 from datetime import datetime
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 
 AUDIOTEKA_API_URL = "https://proxy3.audioteka.com/pl/MobileService.svc/"

@@ -116,7 +116,7 @@ Downloading one chapter and saving it into file::
     >>> r = audtekapi.get_chapter_file(shelf['Books'][0]['OrderTrackingNumber'], shelf['Books'][0]['LineItemId'], shelf['ServerAddress'], shelf['Footer'], chapters[1]['Link'], cred)
     >>> open(chapters[1]['Link'], 'wb').write(r.content)
 
-...or downloading as stream (chunks) and saving it into file:
+...or downloading as stream (chunks) and saving it into file::
 
     >>> r = audtekapi.get_chapter_file(shelf['Books'][0]['OrderTrackingNumber'], shelf['Books'][0]['LineItemId'], shelf['ServerAddress'], shelf['Footer'], chapters[1]['Link'], cred, True)
     >>> with open(chapters[1]['Link'], 'wb') as f:
