@@ -30,9 +30,16 @@ LoggedInData = {
 
 
 class AudiotekaAPI:
-    def __init__(self):
+    def __init__(self, email: str, password: str, device_id: str):
+        self._email: str = email
+        self._password: str = password
+        self._device_id: str = device_id
         self._logged_in_data: LoggedInData = None
         self._session: requests.Session = requests.session()
+
+    @property
+    def session(self) -> requests.Session:
+        return self._session
 
     def get_categories(self):
         """
@@ -50,13 +57,10 @@ class AudiotekaAPI:
         },"""
         return self._get("/v2/me/screen").json()
 
-    def login(self, email: str, password: str, device_id: str) -> bool:
+    def login(self) -> bool:
         """
         Login (authenticate) user
 
-        :param email:
-        :param password:
-        :param device_id:
         :return:
 
         {
@@ -75,16 +79,19 @@ class AudiotekaAPI:
         }
         """
 
+        if self._logged_in_data:
+            return True
+
         data = {
             "name": "Authenticate",
-            "email": email,
-            "password": password,
-            "device_id": device_id,
+            "email": self._email,
+            "password": self._password,
+            "device_id": self._device_id,
         }
 
         r = self._post("/v2/commands", data)
-        self._logged_in_data: LoggedInData = r.json()
-        self._logged_in_data['device_id'] = device_id
+        self._logged_in_data = r.json()
+        self._logged_in_data['device_id'] = self._device_id
         return True
 
     def refresh_token(self) -> bool:
@@ -94,7 +101,7 @@ class AudiotekaAPI:
             "device_id": self._logged_in_data['device_id'],
         }
 
-        r = self._post("/v2/commands", {}, data)
+        r = self._post("/v2/commands", data)
         logged_in_data = r.json()
 
         return logged_in_data
@@ -139,8 +146,8 @@ class AudiotekaAPI:
         return self._get(
             f"/v2/audiobooks/{audiobook_id}").json()
 
-    def get_track_file(self, track_file_url):
-        return self._get(track_file_url)
+    def get_track(self, track_file_url):
+        return self._get(track_file_url).json()
 
     def get_audiobook_track_list(self, audiobook_id):
         """
@@ -198,33 +205,53 @@ class AudiotekaAPI:
     def get_playback_progress(self):
         return self._get("/v2/me/playback-progress").json()
 
-    def get_shelf(self) -> Dict:
+    def get_shelf(self, page: int = 1, limit: int = 10) -> Dict:
         """
         gets personal shelf content
 
-        :param logged_in_data:
-        :param session:
-        :param headers:
+        :param page:
+        :param limit:
         :return:
         """
-        return self._get("/v2/me/shelf").json()
+        params = {"page": page, "limit": limit}
+        return self._get("/v2/me/shelf", params).json()
 
     def _post(self, endpoint: str, data: dict = None):
-        r = self._session.post(AUDIOTEKA_API_URL + endpoint, json=data, headers=self._make_headers())
+        r = None
         try:
-            logger.debug(json.dumps(r.json(), indent=4, sort_keys=True))
-        except:
-            logger.debug(f"No JSON type response. Status={r.status_code}")
-        r.raise_for_status()
+            r = self._session.post(AUDIOTEKA_API_URL + endpoint, json=data, headers=self._make_headers())
+            try:
+                logger.debug(json.dumps(r.json(), indent=4, sort_keys=True))
+            except:
+                logger.debug(f"No JSON type response. Status={r.status_code}")
+            r.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code != 401:
+                raise e
+            if self._logged_in_data:
+                self.refresh_token()
+            else:
+                self.login()
+            return self._post(endpoint, data)
         return r
 
-    def _get(self, endpoint: str):
-        r = self._session.get(AUDIOTEKA_API_URL + endpoint, headers=self._make_headers())
+    def _get(self, endpoint: str, params: dict = None):
+        r = None
         try:
-            logger.debug(json.dumps(r.json(), indent=4, sort_keys=True))
-        except:
-            logger.debug(f"No JSON type response. Status={r.status_code}")
-        r.raise_for_status()
+            r = self._session.get(AUDIOTEKA_API_URL + endpoint, params=params, headers=self._make_headers())
+            try:
+                logger.debug(json.dumps(r.json(), indent=4, sort_keys=True))
+            except:
+                logger.debug(f"No JSON type response. Status={r.status_code}")
+            r.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code != 401:
+                raise e
+            if self._logged_in_data:
+                self.refresh_token()
+            else:
+                self.login()
+            return self._get(endpoint, params)
         return r
 
     def _make_headers(self) -> dict:

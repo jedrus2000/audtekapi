@@ -1,11 +1,11 @@
 import re
-
 from setuptools import find_packages, setup
 
 
 def get_version(filename):
     with open(filename) as fh:
-        metadata = dict(re.findall("__([a-z]+)__ = '([^']+)'", fh.read()))
+        metadata = dict(re.findall(r"__([a-z]+)__ = \"([^\"]+)\"", fh.read()))
+        print(metadata['version'])
         return metadata['version']
 
 
@@ -32,6 +32,8 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Multimedia :: Sound/Audio',
     ],
 )
