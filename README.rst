@@ -31,7 +31,7 @@ Install by running::
 
 
 Usage - DOCUMENTATION TODO
-=============
+==========================
 Examples.
 
 generate device id::
