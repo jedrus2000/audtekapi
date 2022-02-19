@@ -1,17 +1,13 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 import unittest
 import logging
 from datetime import datetime
 
 import audtekapi as api
 
-logger = logging.getLogger(__name__)
-
 
 class AudtekAPI(unittest.TestCase):
     def setUp(self):
-        logger.setLevel('DEBUG')
+        logging.basicConfig(level=logging.DEBUG)
         pass
 
     def test_password_hashing(self):

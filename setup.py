@@ -1,20 +1,18 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 import re
-
 from setuptools import find_packages, setup
 
 
 def get_version(filename):
     with open(filename) as fh:
-        metadata = dict(re.findall("__([a-z]+)__ = '([^']+)'", fh.read()))
+        metadata = dict(re.findall(r"__([a-z]+)__ = \"([^\"]+)\"", fh.read()))
+        print(metadata['version'])
         return metadata['version']
 
 
 setup(
     name='audtekapi',
     version=get_version('audtekapi/__init__.py'),
+    python_requires='~=3.7',
     url='https://github.com/jedrus2000/audtekapi',
     license='Apache License, Version 2.0',
     author=u'Andrzej Bargański',
@@ -26,14 +24,16 @@ setup(
     include_package_data=True,
     install_requires=[
         'setuptools',
-        'requests >= 2.21.0',
+        'requests >= 2.25.0',
     ],
     classifiers=[
         'Environment :: No Input/Output (Daemon)',
         'Intended Audience :: End Users/Desktop',
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Multimedia :: Sound/Audio',
     ],
 )
