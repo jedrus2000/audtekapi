@@ -172,7 +172,7 @@ class CodeBrowser(App):
         # Add fields to metadata with proper namespace
         etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}title').text = title
         etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}creator', attrib={'{http://www.idpf.org/2007/opf}role': 'aut'}).text = author
-        etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}contributor', attrib={'{http://www.idpf.org/2007/opf}role': 'nrt'}).text = narrator
+        etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}creator', attrib={'{http://www.idpf.org/2007/opf}role': 'nrt'}).text = narrator
         etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}date').text = publish_year
         etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}publisher').text = publisher
         etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}identifier', attrib={'id': 'bookid'}).text = isbn
