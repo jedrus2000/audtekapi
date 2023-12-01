@@ -37,7 +37,7 @@ AUDIOTEKA_STATIC_PATHS = ['shelf']
 
 
 api: AudiotekaAPI = AudiotekaAPI(os.getenv('AUDIOTEKA_EMAIL'), os.getenv('AUDIOTEKA_PASSWORD'),
-                                 os.getenv('AUDIOTEKA_DEVICE_ID'))
+                                 os.getenv('AUDIOTEKA_DEVICE_ID'), save_session=True)
 
 
 class AudiotekaPath:

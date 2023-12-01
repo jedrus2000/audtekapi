@@ -1,12 +1,14 @@
 import hashlib
 import binascii
 import json
+import pickle
 import re
 import requests
 from typing import Dict
 from requests.auth import HTTPDigestAuth
 import logging
 from datetime import datetime
+from pathlib import Path
 
 __version__ = "0.3.0"
 
@@ -28,14 +30,32 @@ LoggedInData = {
     "device_id": str
 }
 
+FILE_SESSION = "audteka_session.bin"
+FILE_LOGGED_IN_DATA = "audteka_logged_in_data.bin"
 
 class AudiotekaAPI:
-    def __init__(self, email: str, password: str, device_id: str):
+    def __init__(self, email: str, password: str, device_id: str, save_session: bool = False):
         self._email: str = email
         self._password: str = password
         self._device_id: str = device_id
         self._logged_in_data: LoggedInData = None
+        self._save_session: bool = save_session
         self._session: requests.Session = requests.session()
+        try:
+            self._logged_in_data = pickle.loads(Path(FILE_LOGGED_IN_DATA).read_bytes())
+            self._session = pickle.loads(Path(FILE_SESSION).read_bytes())
+        except:
+            ...
+
+    def _store_session(self):
+        if not self._save_session:
+            return
+        try:
+            Path(FILE_LOGGED_IN_DATA).write_bytes(pickle.dumps(self._logged_in_data))
+            Path(FILE_SESSION).write_bytes(pickle.dumps(self._session))
+        except:
+            ...
+
 
     @property
     def session(self) -> requests.Session:
@@ -92,6 +112,7 @@ class AudiotekaAPI:
         r = self._post("/v2/commands", data)
         self._logged_in_data = r.json()
         self._logged_in_data['device_id'] = self._device_id
+        self._store_session()
         return True
 
     def refresh_token(self) -> bool:
@@ -103,7 +124,7 @@ class AudiotekaAPI:
 
         r = self._post("/v2/commands", data)
         logged_in_data = r.json()
-
+        self._store_session()
         return logged_in_data
 
     def audiobook_start_playback(self, audiobook_id):
