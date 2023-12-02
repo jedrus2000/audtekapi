@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import sys
 import asyncio
+from copy import copy
+
 from lxml import etree
 from pathlib import Path
 
@@ -94,53 +96,56 @@ class CodeBrowser(App):
     async def _write_to_log(self, line):
         log: Log = self.query_one("#log", Log)
         log.write_line(line)
-        await asyncio.sleep(0.01)
 
-    @work
+    @work(exclusive=False, thread=True)
+    async def _download_book_from_selected_node(self, node: AudiotekaPath):
+        book_data = node.data
+        node_name = node.name
+        await self._write_to_log(f"{node_name}: Downloading")
+        # category
+        category_id = book_data['main_category_id']
+        book_data['category_name'] = ""
+        if category_id:
+            for category in categories['_embedded']['app:category']:
+                if category['id'] == category_id:
+                    book_data['category_name'] = category['name']
+                    break
+        # opf
+        await self._write_to_log(f"{node_name}: Creating OPF file")
+        author_name = book_data['_embedded']['app:author'][0]['name']
+        tile = book_data['name']
+        parts = author_name.split()
+        if len(parts) >= 2:
+            author_name = f"{' '.join(parts[1:])}, {parts[0]}"
+        book_dir = Path("books", f"{author_name}", f"{tile}")
+        book_dir.mkdir(parents=True, exist_ok=True)
+        self._create_opf_file(book_data, book_dir)
+        # cover
+        await self._write_to_log(f"{node_name} Downloading cover.")
+        r = api._session.get(book_data['image_url'])
+        Path(book_dir, 'cover.jpg').write_bytes(r.content)
+        # book content
+        audiobook_id = book_data['id']
+        tracks_list = api.get_audiobook_track_list(audiobook_id)
+        tracks_number = len(tracks_list['_embedded']['app:track'])
+        for idx, track in enumerate(tracks_list['_embedded']['app:track']):
+            await self._write_to_log(f"{node_name}: Downloading track {idx+1} of of {tracks_number}")
+            file_info = api.get_track(track['_links']['app:file']['href'])
+            filename = Path(book_dir, f"{track['title']}.mp3")
+            response = api._session.get(file_info['url'], stream=True, timeout=(90, 180))
+            with open(filename, "wb") as f:
+                # Iterate over the chunks of the response content
+                for chunk in response.iter_content(chunk_size=8192):
+                    # Write the chunk to the file
+                    f.write(chunk)
+        #
+        await self._write_to_log(f"{node_name} Done !")
+
     async def action_download_content(self) -> None:
         """Called in response to key binding."""
         if self.selected_node and self.selected_node.audioteka_obj_type == 'app:product':
-            book_data = self.selected_node.data
-            await self._write_to_log(f"Downloading: {self.selected_node.name}")
-            # category
-            category_id = book_data['main_category_id']
-            book_data['category_name'] = ""
-            if category_id:
-                for category in categories['_embedded']['app:category']:
-                    if category['id'] == category_id:
-                        book_data['category_name'] = category['name']
-                        break
-            # opf
-            await self._write_to_log(f"Creating OPF file for: {self.selected_node.name}")
-            author_name = book_data['_embedded']['app:author'][0]['name']
-            tile = book_data['name']
-            parts = author_name.split()
-            if len(parts) >= 2:
-                author_name = f"{' '.join(parts[1:])}, {parts[0]}"
-            book_dir = Path("books", f"{author_name}", f"{tile}")
-            book_dir.mkdir(parents=True, exist_ok=True)
-            self._create_opf_file(book_data, book_dir)
-            # cover
-            await self._write_to_log(f"Downloading cover for: {self.selected_node.name}")
-            r = api._session.get(book_data['image_url'])
-            Path(book_dir, 'cover.jpg').write_bytes(r.content)
-            # book content
-            audiobook_id = book_data['id']
-            tracks_list = api.get_audiobook_track_list(audiobook_id)
-            tracks_number = len(tracks_list['_embedded']['app:track'])
-            for idx, track in enumerate(tracks_list['_embedded']['app:track']):
-                await self._write_to_log(f"Downloading track {idx+1} of of {tracks_number}")
-                file_info = api.get_track(track['_links']['app:file']['href'])
-                filename = Path(book_dir, f"{track['title']}.mp3")
-                response = api._session.get(file_info['url'], stream=True, timeout=(90, 180))
-                with open(filename, "wb") as f:
-                    # Iterate over the chunks of the response content
-                    for chunk in response.iter_content(chunk_size=8192):
-                        # Write the chunk to the file
-                        f.write(chunk)
-
-            #
-            await self._write_to_log(f"Done: {self.selected_node.name} !")
+            node = copy(self.selected_node)
+            self._download_book_from_selected_node(node)
 
     def _create_opf_file(self, book_data: dict, file_path: Path):
         title = book_data['name']
