@@ -191,11 +191,15 @@ class AudiotekaAPI:
         return self._get(
             f"/v2/audiobooks/{audiobook_id}/table-of-contents").json()
 
-    def get_products_in_catalog(self):
+    def get_products_in_catalog(self, page: int = 1, limit: int = 10, catalog: str = None, sort: str = None, order: str = None):
         """
         app:product-list
         """
-        return self._get("/v2/products").json()
+        params = {"page": page, "limit": limit}
+        if catalog:
+            params["catalog"] = catalog
+
+        return self._get("/v2/products", params).json()
 
     def get_user_account_info(self):
         return self._get("/v2/me").json()
@@ -226,16 +230,41 @@ class AudiotekaAPI:
     def get_playback_progress(self):
         return self._get("/v2/me/playback-progress").json()
 
-    def get_shelf(self, page: int = 1, limit: int = 10) -> Dict:
+    def get_shelf(self, page: int = 1, limit: int = 10, sort: str = None, order: str = None) -> Dict:
         """
         gets personal shelf content
 
         :param page:
         :param limit:
+        :param sort
+        :param order
         :return:
         """
         params = {"page": page, "limit": limit}
+        if sort:
+            params["sort"] = sort
+        if order:
+            params["order"] = order
         return self._get("/v2/me/shelf", params).json()
+
+    def get_favourites(self, page: int = 1, limit: int = 100, sort: str = None, order: str = None) -> Dict:
+        """
+        gets personal favourites content
+
+        :param page:
+        :param limit:
+        :param sort
+        :param order
+        :return:
+        """
+        params = {"page": page, "limit": limit}
+        return self._get("/v2/me/favourites", params).json()
+
+    def get_config(self):
+        return self._get("/v2/apps/config").json()
+
+    def get_algolia(self):
+        return self._get("/v2/me/algolia").json()
 
     def _post(self, endpoint: str, data: dict = None):
         r = None
