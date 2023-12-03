@@ -33,7 +33,7 @@ from audtekapi import AudiotekaAPI
 TOGGLE_STYLE = Style.from_meta({"toggle": True})
 
 
-AUDIOTEKA_STATIC_PATHS = ['shelf']
+AUDIOTEKA_STATIC_PATHS = ['shelf', 'favourites']
 
 
 api: AudiotekaAPI = AudiotekaAPI(os.getenv('AUDIOTEKA_EMAIL'), os.getenv('AUDIOTEKA_PASSWORD'),
@@ -48,7 +48,7 @@ class AudiotekaPath:
         self._data: dict | None = audioteka_data
 
     def is_dir(self):
-        if self.path in ['audioteka', 'shelf']:
+        if self.path in ['audioteka', 'shelf', 'favourites']:
             return True
         return False
 
@@ -71,6 +71,13 @@ class AudiotekaPath:
     def audioteka_obj_type(self) -> str:
         return self._audioteka_obj_type or ""
 
+    def _get_products_function(self) -> Callable or None:
+        if self.path == 'shelf':
+            return api.get_shelf
+        elif self.path == 'favourites':
+            return api.get_favourites
+        return None
+
     def __str__(self):
         return self.path
 
@@ -78,8 +85,8 @@ class AudiotekaPath:
         if self.path == 'audioteka':
             for p in AUDIOTEKA_STATIC_PATHS:
                 yield AudiotekaPath(p)
-        if self.path == 'shelf':
-            for path, audioteka_obj_type, audioteka_obj_data in self._process_shelf():
+        if self.path in ['shelf', 'favourites']:
+            for path, audioteka_obj_type, audioteka_obj_data in self._get_products_details(self._get_products_function()):
                 yield AudiotekaPath(path, audioteka_obj_type, audioteka_obj_data)
 
     def _load_audiobook_content(self) -> dict | None:
@@ -91,20 +98,19 @@ class AudiotekaPath:
             return book
         return None
 
-    def _process_shelf(self) -> Iterator[str]:
+    def _get_products_details(self, products_func: Callable) -> Iterator[str]:
         item = 0
         page = 1
-        pages = 1000
-        cnt = 0
-        shelf = api.get_shelf(page=page)
+        shelf = products_func(page=page)
         items = int(shelf['total'])
         while item < items:
             if len(shelf['_embedded']['app:product']) == 0:
                 page += 1
-                shelf = api.get_shelf(page=page)
+                shelf = products_func(page=page)
             p = shelf['_embedded']['app:product'].pop()
             item += 1
             yield p['name'], 'app:product', p
+
 
 @dataclass
 class DirEntry:

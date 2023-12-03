@@ -8,11 +8,12 @@ Run with:
 from __future__ import annotations
 
 import sys
-import asyncio
 from copy import copy
 
 from lxml import etree
 from pathlib import Path
+from urllib.parse import urlparse, unquote
+from slugify import slugify
 
 from rich.syntax import Syntax
 from rich.traceback import Traceback
@@ -27,6 +28,7 @@ from audioteka_tree import DirectoryTree, AudiotekaPath
 from audioteka_tree import api
 
 categories = api.get_categories()
+
 
 class CodeBrowser(App):
     """Textual code browser app."""
@@ -99,6 +101,9 @@ class CodeBrowser(App):
 
     @work(exclusive=False, thread=True)
     async def _download_book_from_selected_node(self, node: AudiotekaPath):
+        def format_item_number(number: int, no_of_items: int) -> str:
+            max_digits = len(str(no_of_items))
+            return str(number).zfill(max_digits)
         book_data = node.data
         node_name = node.name
         await self._write_to_log(f"{node_name}: Downloading")
@@ -128,10 +133,22 @@ class CodeBrowser(App):
         audiobook_id = book_data['id']
         tracks_list = api.get_audiobook_track_list(audiobook_id)
         tracks_number = len(tracks_list['_embedded']['app:track'])
+        add_number_in_front = False
         for idx, track in enumerate(tracks_list['_embedded']['app:track']):
             await self._write_to_log(f"{node_name}: Downloading track {idx+1} of of {tracks_number}")
             file_info = api.get_track(track['_links']['app:file']['href'])
-            filename = Path(book_dir, f"{track['title']}.mp3")
+            # filename = Path(book_dir, f"{track['title']}.mp3")
+            # filename = Path(book_dir, unquote(urlparse(file_info['url']).path).split('/')[-1])
+            slug_track_name = slugify(track['title'], allow_unicode=True)
+            if idx == 0 and slug_track_name[0].isdigit():
+                add_number_in_front = False
+            elif idx == 0:
+                add_number_in_front = True
+            if not add_number_in_front:
+                track_number_str = ''
+            else:
+                track_number_str = f"{format_item_number(idx+1, tracks_number)}-"
+            filename = Path(book_dir, f"{track_number_str}{slug_track_name}.mp3")
             response = api._session.get(file_info['url'], stream=True, timeout=(90, 180))
             with open(filename, "wb") as f:
                 # Iterate over the chunks of the response content
@@ -149,7 +166,7 @@ class CodeBrowser(App):
 
     def _create_opf_file(self, book_data: dict, file_path: Path):
         title = book_data['name']
-        author = book_data['_embedded']['app:author'][0]['name']
+        authors = book_data['_embedded']['app:author']
         narrator = book_data['_embedded']['app:lector'][0]['name']
         publish_year = book_data['published_at'].split('-')[0]
         publisher = book_data['_embedded']['app:publisher'][0]['name']
@@ -176,7 +193,8 @@ class CodeBrowser(App):
 
         # Add fields to metadata with proper namespace
         etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}title').text = title
-        etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}creator', attrib={'{http://www.idpf.org/2007/opf}role': 'aut'}).text = author
+        for author in authors:
+            etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}creator', attrib={'{http://www.idpf.org/2007/opf}role': 'aut'}).text = author['name']
         etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}creator', attrib={'{http://www.idpf.org/2007/opf}role': 'nrt'}).text = narrator
         etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}date').text = publish_year
         etree.SubElement(metadata, '{http://purl.org/dc/elements/1.1/}publisher').text = publisher

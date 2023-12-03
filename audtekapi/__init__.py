@@ -33,6 +33,7 @@ LoggedInData = {
 FILE_SESSION = "audteka_session.bin"
 FILE_LOGGED_IN_DATA = "audteka_logged_in_data.bin"
 
+
 class AudiotekaAPI:
     def __init__(self, email: str, password: str, device_id: str, save_session: bool = False):
         self._email: str = email
@@ -191,15 +192,22 @@ class AudiotekaAPI:
         return self._get(
             f"/v2/audiobooks/{audiobook_id}/table-of-contents").json()
 
-    def get_products_in_catalog(self, page: int = 1, limit: int = 10, catalog: str = None, sort: str = None, order: str = None):
+    def get_products_in_catalog(self, page: int = 1, limit: int = 10, cycle: str = '', catalog: str = None):
         """
-        app:product-list
+
+        get products in catalog
+
+        :param page:
+        :param limit:
+        :param cycle:
+        :param catalog: if use catalog cycle should be also provided
+        :return:
         """
         params = {"page": page, "limit": limit}
         if catalog:
             params["catalog"] = catalog
 
-        return self._get("/v2/products", params).json()
+        return self._get(f"/v2/products/{cycle}", params).json()
 
     def get_user_account_info(self):
         return self._get("/v2/me").json()
