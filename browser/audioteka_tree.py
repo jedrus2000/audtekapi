@@ -184,6 +184,31 @@ class DirectoryTree(Tree[DirEntry]):
             """The `Tree` that had a file selected."""
             return self.node.tree
 
+    class FileHighlighted(Message):
+        """Posted when a file is highlighted.
+
+        Can be handled using `on_directory_tree_file_highlighted` in a subclass of
+        `DirectoryTree` or in a parent widget in the DOM.
+        """
+
+        def __init__(self, node: TreeNode[DirEntry], path: AudiotekaPath) -> None:
+            """Initialise the FileSelected object.
+
+            Args:
+                node: The tree node for the file that was highlighted.
+                path: The path of the file that was highlighted.
+            """
+            super().__init__()
+            self.node: TreeNode[DirEntry] = node
+            """The tree node of the file that was highlighted."""
+            self.path: AudiotekaPath = path
+            """The path of the file that was highlighted."""
+
+        @property
+        def control(self) -> Tree[DirEntry]:
+            """The `Tree` that had a file highlighted."""
+            return self.node.tree
+
     class DirectorySelected(Message):
         """Posted when a directory is selected.
 
@@ -543,6 +568,14 @@ class DirectoryTree(Tree[DirEntry]):
             await self._add_to_load_queue(event.node)
         else:
             self.post_message(self.FileSelected(event.node, dir_entry.path))
+
+    async def _on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
+        event.stop()
+        dir_entry = event.node.data
+        if dir_entry is None:
+            return
+        if not self._safe_is_dir(dir_entry.path):
+            self.post_message(self.FileHighlighted(event.node, dir_entry.path))
 
     def _on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         event.stop()

@@ -91,6 +91,16 @@ class CodeBrowser(App):
             self.query_one("#code-view").scroll_home(animate=False)
             self.sub_title = str(event.path)
 
+    def on_directory_tree_file_highlighted(
+            self, event: DirectoryTree.FileHighlighted
+    ) -> None:
+        """Called when file is highlighted"""
+        event.stop()
+        self.selected_node = None
+        code_view = self.query_one("#code", Static)
+        code_view.update()
+        self.sub_title = ""
+
     def action_toggle_files(self) -> None:
         """Called in response to key binding."""
         self.show_tree = not self.show_tree
