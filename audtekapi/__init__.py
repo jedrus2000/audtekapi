@@ -209,6 +209,35 @@ class AudiotekaAPI:
 
         return self._get(f"/v2/products/{cycle}", params).json()
 
+    def get_cycles(self, page: int = 1, limit: int = 10, cycle: str = ''):
+        """
+
+        get cycle(s)
+
+        :param page:
+        :param limit:
+        :param cycle:
+        :return:
+        """
+        params = {"page": page, "limit": limit}
+
+        return self._get(f"/v2/cycles/{cycle}", params).json()
+
+    def get_cycle_products(self, cycle: str, page: int = 1, limit: int = 10):
+        """
+
+        get cycle products
+
+        :param page:
+        :param limit:
+        :param cycle:
+        :return:
+        """
+        params = {"page": page, "limit": limit}
+
+        return self._get(f"/v2/cycles/{cycle}/products", params).json()
+
+
     def get_user_account_info(self):
         return self._get("/v2/me").json()
 
