@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 
 AUDIOTEKA_API_URL = "https://api-audioteka.audioteka.com"
@@ -56,7 +56,6 @@ class AudiotekaAPI:
             Path(FILE_SESSION).write_bytes(pickle.dumps(self._session))
         except:
             ...
-
 
     @property
     def session(self) -> requests.Session:
@@ -109,8 +108,7 @@ class AudiotekaAPI:
             "password": self._password,
             "device_id": self._device_id,
         }
-
-        r = self._post("/v2/commands", data)
+        r = self._post("/v2/commands", data, handle_exception=False)
         self._logged_in_data = r.json()
         self._logged_in_data['device_id'] = self._device_id
         self._store_session()
@@ -123,7 +121,7 @@ class AudiotekaAPI:
             "device_id": self._logged_in_data['device_id'],
         }
 
-        r = self._post("/v2/commands", data)
+        r = self._post("/v2/commands", data, handle_exception=False)
         logged_in_data = r.json()
         self._store_session()
         return logged_in_data
@@ -303,7 +301,22 @@ class AudiotekaAPI:
     def get_algolia(self):
         return self._get("/v2/me/algolia").json()
 
-    def _post(self, endpoint: str, data: dict = None):
+    def _handle_exception(self, e: requests.exceptions.HTTPError):
+        if e.response.status_code != 401:
+            raise e
+        if self._logged_in_data:
+            try:
+                self.refresh_token()
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code != 401:
+                    raise e
+                self._logged_in_data = None
+                self._session = requests.session()
+                self.login()
+        else:
+            self.login()
+
+    def _post(self, endpoint: str, data: dict = None, handle_exception: bool = True):
         r = None
         try:
             r = self._session.post(AUDIOTEKA_API_URL + endpoint, json=data, headers=self._make_headers())
@@ -313,12 +326,9 @@ class AudiotekaAPI:
                 logger.debug(f"No JSON type response. Status={r.status_code}")
             r.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code != 401:
+            if not handle_exception:
                 raise e
-            if self._logged_in_data:
-                self.refresh_token()
-            else:
-                self.login()
+            self._handle_exception(e)
             return self._post(endpoint, data)
         return r
 
@@ -332,12 +342,7 @@ class AudiotekaAPI:
                 logger.debug(f"No JSON type response. Status={r.status_code}")
             r.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code != 401:
-                raise e
-            if self._logged_in_data:
-                self.refresh_token()
-            else:
-                self.login()
+            self._handle_exception(e)
             return self._get(endpoint, params)
         return r
 
